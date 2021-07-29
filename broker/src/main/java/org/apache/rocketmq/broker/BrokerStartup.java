@@ -86,7 +86,7 @@ public class BrokerStartup {
             controller.shutdown();
         }
     }
-
+    // broker store 配置
     public static BrokerController createBrokerController(String[] args) {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
