@@ -1316,7 +1316,10 @@ public class CommitLog {
                     if (flushCommitLogTimed) {
                         Thread.sleep(interval);
                     } else {
+//                        System.out.println("before:" + System.currentTimeMillis());
+                        //cao 日了够这里只睡了 500ms很快，所以个人感觉上面那个异步刷盘唤醒根本没啥用
                         this.waitForRunning(interval);
+//                        System.out.println("end:" + System.currentTimeMillis());
                     }
 
                     if (printFlushProgress) {
@@ -1324,6 +1327,7 @@ public class CommitLog {
                     }
 
                     long begin = System.currentTimeMillis();
+                    //真正刷盘的地方
                     CommitLog.this.mappedFileQueue.flush(flushPhysicQueueLeastPages);
                     long storeTimestamp = CommitLog.this.mappedFileQueue.getStoreTimestamp();
                     if (storeTimestamp > 0) {
@@ -1340,6 +1344,7 @@ public class CommitLog {
             }
 
             // Normal shutdown, to ensure that all the flush before exit
+            //牛逼啊 在正常关的时候，确保所有的内存刷到盘上
             boolean result = false;
             for (int i = 0; i < RETRY_TIMES_OVER && !result; i++) {
                 result = CommitLog.this.mappedFileQueue.flush(0);
