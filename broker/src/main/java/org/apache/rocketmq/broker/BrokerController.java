@@ -234,13 +234,15 @@ public class BrokerController {
     public boolean initialize() throws CloneNotSupportedException {
         //加载topic配置，写入到本地
         boolean result = this.topicConfigManager.load();
-
+        //加载消费偏移量文件
         result = result && this.consumerOffsetManager.load();
+        //加载订阅的消费组
         result = result && this.subscriptionGroupManager.load();
         result = result && this.consumerFilterManager.load();
 
         if (result) {
             try {
+                //初始化 commitlog等一系列存储消息的配置
                 this.messageStore =
                     new DefaultMessageStore(this.messageStoreConfig, this.brokerStatsManager, this.messageArrivingListener,
                         this.brokerConfig);
@@ -259,6 +261,8 @@ public class BrokerController {
             }
         }
 
+        //加载  commitlog file 对应  mappedFileQueue 的初始化
+        // 加载 consumequeue 下 topic 对应的 所有队列文件
         result = result && this.messageStore.load();
 
         if (result) {

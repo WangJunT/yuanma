@@ -190,9 +190,12 @@ public class DefaultMessageStore implements MessageStore {
             }
 
             // load Commit Log
+            //commit 对应 mappedFileQueue ，位于 commitlog 目录下的所有文件
+            //commitlog 里面是怎么结构？多个topic的数据都在一个 commitlog 里了
             result = result && this.commitLog.load();
 
             // load Consume Queue
+            //位于 改broker 的 consumequeue下的所有主题的所有队列
             result = result && this.loadConsumeQueue();
 
             if (result) {
@@ -433,8 +436,9 @@ public class DefaultMessageStore implements MessageStore {
             if (elapsedTime > 500) {
                 log.warn("putMessage not in lock elapsed time(ms)={}, bodyLength={}", elapsedTime, msg.getBody().length);
             }
+            //统计存储消息的时长 更新存储消息的最长时间
             this.storeStatsService.setPutMessageEntireTimeMax(elapsedTime);
-
+            //如果放入失败 则更新失败次数
             if (null == result || !result.isOk()) {
                 this.storeStatsService.getPutMessageFailedTimes().incrementAndGet();
             }
@@ -1369,10 +1373,10 @@ public class DefaultMessageStore implements MessageStore {
         File dirLogic = new File(StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()));
         File[] fileTopicList = dirLogic.listFiles();
         if (fileTopicList != null) {
-
+            //topic文件夹
             for (File fileTopic : fileTopicList) {
                 String topic = fileTopic.getName();
-
+                //队列id文件夹
                 File[] fileQueueIdList = fileTopic.listFiles();
                 if (fileQueueIdList != null) {
                     for (File fileQueueId : fileQueueIdList) {
@@ -1389,6 +1393,7 @@ public class DefaultMessageStore implements MessageStore {
                             this.getMessageStoreConfig().getMappedFileSizeConsumeQueue(),
                             this);
                         this.putConsumeQueue(topic, queueId, logic);
+                        //具体的文件
                         if (!logic.load()) {
                             return false;
                         }
