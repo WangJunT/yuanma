@@ -159,6 +159,7 @@ public class TopicConfigManager extends ConfigManager {
         boolean createNew = false;
 
         try {
+            //加锁，多个客户端同时往改broker发送消息
             if (this.lockTopicConfigTable.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     topicConfig = this.topicConfigTable.get(topic);
@@ -209,7 +210,7 @@ public class TopicConfigManager extends ConfigManager {
                         this.dataVersion.nextVersion();
 
                         createNew = true;
-
+                        //将新创建的 topic 信息（即topicConfigTable中的数据）写入 config下的topics.json中
                         this.persist();
                     }
                 } finally {

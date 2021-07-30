@@ -67,6 +67,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         this.namesrvController = namesrvController;
     }
 
+    //与namesrv相关请求应该都会走这里（猜测），目前从namesrv获取topic的routeinfo走这里
     @Override
     public RemotingCommand processRequest(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
@@ -97,6 +98,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
                 }
             case RequestCode.UNREGISTER_BROKER:
                 return this.unregisterBroker(ctx, request);
+                //生产者获取主题的routeinfo
             case RequestCode.GET_ROUTEINFO_BY_TOPIC:
                 return this.getRouteInfoByTopic(ctx, request);
             case RequestCode.GET_BROKER_CLUSTER_INFO:
@@ -340,7 +342,10 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
         final GetRouteInfoRequestHeader requestHeader =
             (GetRouteInfoRequestHeader) request.decodeCommandCustomHeader(GetRouteInfoRequestHeader.class);
-
+        //在 broker 启动的时候，broker会将自己的 topic 以及路由信息发送到 namesrv ，并且每 30 s 一更新，
+        // namesrv会将broker发送过来的 routeinfo 放到内存中
+        // 如果  broker 配置了 autoCreateTopicEnable 为 true(默认为 true)，则会将 TBW102 传过来，
+        // 在 生产者往 broker 还不存在的 topic 发送消息的时候会把 TBW102 的路由消息传回去
         TopicRouteData topicRouteData = this.namesrvController.getRouteInfoManager().pickupTopicRouteData(requestHeader.getTopic());
 
         if (topicRouteData != null) {

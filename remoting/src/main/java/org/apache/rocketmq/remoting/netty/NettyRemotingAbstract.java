@@ -150,11 +150,13 @@ public abstract class NettyRemotingAbstract {
      * @param msg incoming remoting command.
      * @throws Exception if there were any error while processing the incoming command.
      */
+    //目前看到的 生产者推送消息到broker，生产者从 namesrv获取topic的routeinfo 都会走到这个方法
     public void processMessageReceived(ChannelHandlerContext ctx, RemotingCommand msg) throws Exception {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
                 case REQUEST_COMMAND:
+                    //走这里
                     processRequestCommand(ctx, cmd);
                     break;
                 case RESPONSE_COMMAND:
@@ -221,6 +223,7 @@ public abstract class NettyRemotingAbstract {
                             }
                         };
                         if (pair.getObject1() instanceof AsyncNettyRequestProcessor) {
+                            //获取topic路由信息，消息放到broker
                             AsyncNettyRequestProcessor processor = (AsyncNettyRequestProcessor)pair.getObject1();
                             processor.asyncProcessRequest(ctx, cmd, callback);
                         } else {
