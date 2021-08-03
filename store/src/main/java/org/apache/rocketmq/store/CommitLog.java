@@ -665,6 +665,7 @@ public class CommitLog {
 
         //这里应该是刷盘，将内容刷到 commitlog 中
         CompletableFuture<PutMessageStatus> flushResultFuture = submitFlushRequest(result, putMessageResult, msg);
+        //同步到从节点
         CompletableFuture<PutMessageStatus> replicaResultFuture = submitReplicaRequest(result, putMessageResult, msg);
         //前面两个异步同时结束，处理前面的返回值，
         return flushResultFuture.thenCombine(replicaResultFuture, (flushStatus, replicaStatus) -> {
