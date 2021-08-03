@@ -34,16 +34,17 @@ public class MappedFileQueue {
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
-
+    //存储目录
     private final String storePath;
-
+    // 单个文件大小
     private final int mappedFileSize;
-
+    //MappedFile文件集合
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
-
+    //创建MapFile服务类
     private final AllocateMappedFileService allocateMappedFileService;
-
+    //当前刷盘指针
     private long flushedWhere = 0;
+    //当前数据提交指针,内存中ByteBuffer当前的写指针,该值大于等于flushWhere
     private long committedWhere = 0;
 
     private volatile long storeTimestamp = 0;
@@ -73,7 +74,7 @@ public class MappedFileQueue {
             }
         }
     }
-
+    //遍历MappedFile文件数组
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -82,6 +83,7 @@ public class MappedFileQueue {
 
         for (int i = 0; i < mfs.length; i++) {
             MappedFile mappedFile = (MappedFile) mfs[i];
+            //MappedFile文件的最后修改时间大于指定时间戳则返回该文件
             if (mappedFile.getLastModifiedTimestamp() >= timestamp) {
                 return mappedFile;
             }
@@ -284,7 +286,7 @@ public class MappedFileQueue {
         }
         return true;
     }
-
+    //获取存储文件最小偏移量
     public long getMinOffset() {
 
         if (!this.mappedFiles.isEmpty()) {
@@ -298,7 +300,7 @@ public class MappedFileQueue {
         }
         return -1;
     }
-
+    //获取存储文件最大偏移量
     public long getMaxOffset() {
         MappedFile mappedFile = getLastMappedFile();
         if (mappedFile != null) {
@@ -306,7 +308,7 @@ public class MappedFileQueue {
         }
         return 0;
     }
-
+    //返回存储文件当前写指针
     public long getMaxWrotePosition() {
         MappedFile mappedFile = getLastMappedFile();
         if (mappedFile != null) {
