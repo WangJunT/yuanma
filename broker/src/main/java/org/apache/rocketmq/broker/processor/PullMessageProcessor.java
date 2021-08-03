@@ -105,7 +105,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
             response.setRemark(String.format("the broker[%s] pulling message is forbidden", this.brokerController.getBrokerConfig().getBrokerIP1()));
             return response;
         }
-
+        // 校验 consumer分组配置 是否存在
         SubscriptionGroupConfig subscriptionGroupConfig =
             this.brokerController.getSubscriptionGroupManager().findSubscriptionGroupConfig(requestHeader.getConsumerGroup());
         if (null == subscriptionGroupConfig) {
@@ -113,17 +113,19 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
             response.setRemark(String.format("subscription group [%s] does not exist, %s", requestHeader.getConsumerGroup(), FAQUrl.suggestTodo(FAQUrl.SUBSCRIPTION_GROUP_NOT_EXIST)));
             return response;
         }
-
+        // 校验 consumer分组配置 是否可消费
         if (!subscriptionGroupConfig.isConsumeEnable()) {
             response.setCode(ResponseCode.NO_PERMISSION);
             response.setRemark("subscription group no permission, " + requestHeader.getConsumerGroup());
             return response;
         }
-
+        // 是否挂起请求，当没有消息时
         final boolean hasSuspendFlag = PullSysFlag.hasSuspendFlag(requestHeader.getSysFlag());
+        // 是否提交消费进度
         final boolean hasCommitOffsetFlag = PullSysFlag.hasCommitOffsetFlag(requestHeader.getSysFlag());
+        // 是否过滤订阅表达式(subscription)
         final boolean hasSubscriptionFlag = PullSysFlag.hasSubscriptionFlag(requestHeader.getSysFlag());
-
+        // 挂起请求超时时长
         final long suspendTimeoutMillisLong = hasSuspendFlag ? requestHeader.getSuspendTimeoutMillis() : 0;
 
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
@@ -148,7 +150,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
             response.setRemark(errorInfo);
             return response;
         }
-
+        // 校验 订阅关系
         SubscriptionData subscriptionData = null;
         ConsumerFilterData consumerFilterData = null;
         if (hasSubscriptionFlag) {
@@ -171,6 +173,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 return response;
             }
         } else {
+            // 校验 消费分组信息 是否存在
             ConsumerGroupInfo consumerGroupInfo =
                 this.brokerController.getConsumerManager().getConsumerGroupInfo(requestHeader.getConsumerGroup());
             if (null == consumerGroupInfo) {
@@ -179,14 +182,14 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 response.setRemark("the consumer's group info not exist" + FAQUrl.suggestTodo(FAQUrl.SAME_GROUP_DIFFERENT_TOPIC));
                 return response;
             }
-
+            // 校验 消费分组信息 消息模型是否匹配
             if (!subscriptionGroupConfig.isConsumeBroadcastEnable()
                 && consumerGroupInfo.getMessageModel() == MessageModel.BROADCASTING) {
                 response.setCode(ResponseCode.NO_PERMISSION);
                 response.setRemark("the consumer group[" + requestHeader.getConsumerGroup() + "] can not consume by broadcast way");
                 return response;
             }
-
+            // 校验 订阅信息 是否存在
             subscriptionData = consumerGroupInfo.findSubscriptionData(requestHeader.getTopic());
             if (null == subscriptionData) {
                 log.warn("the consumer's subscription not exist, group: {}, topic:{}", requestHeader.getConsumerGroup(), requestHeader.getTopic());
@@ -194,7 +197,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 response.setRemark("the consumer's subscription not exist" + FAQUrl.suggestTodo(FAQUrl.SAME_GROUP_DIFFERENT_TOPIC));
                 return response;
             }
-
+            // 校验 订阅信息 是否存在
             if (subscriptionData.getSubVersion() < requestHeader.getSubVersion()) {
                 log.warn("The broker's subscription is not latest, group: {} {}", requestHeader.getConsumerGroup(),
                     subscriptionData.getSubString());
@@ -202,6 +205,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                 response.setRemark("the consumer's subscription not latest");
                 return response;
             }
+
             if (!ExpressionType.isTagType(subscriptionData.getExpressionType())) {
                 consumerFilterData = this.brokerController.getConsumerFilterManager().get(requestHeader.getTopic(),
                     requestHeader.getConsumerGroup());
@@ -235,7 +239,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
             messageFilter = new ExpressionMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
         }
-
+        // 获取消息
         final GetMessageResult getMessageResult =
             this.brokerController.getMessageStore().getMessage(requestHeader.getConsumerGroup(), requestHeader.getTopic(),
                 requestHeader.getQueueId(), requestHeader.getQueueOffset(), requestHeader.getMaxMsgNums(), messageFilter);
@@ -465,6 +469,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         storeOffsetEnable = storeOffsetEnable && hasCommitOffsetFlag;
         storeOffsetEnable = storeOffsetEnable
             && this.brokerController.getMessageStoreConfig().getBrokerRole() != BrokerRole.SLAVE;
+        //更新消息消费进度
         if (storeOffsetEnable) {
             this.brokerController.getConsumerOffsetManager().commitOffset(RemotingHelper.parseChannelRemoteAddr(channel),
                 requestHeader.getConsumerGroup(), requestHeader.getTopic(), requestHeader.getQueueId(), requestHeader.getCommitOffset());

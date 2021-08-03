@@ -1506,7 +1506,19 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 建立 消息位置信息 到 ConsumeQueue
+     *
+     * @param topic 主题
+     * @param queueId 队列编号
+     * @param offset commitLog存储位置
+     * @param size 消息长度
+     * @param tagsCode 消息tagsCode
+     * @param storeTimestamp 存储时间
+     * @param logicOffset 队列位置
+     */
     public void putMessagePositionInfo(DispatchRequest dispatchRequest) {
+        //根据 topic 找到对应的 consumequeue文件夹，然后根据 队列 id,进入子文件夹，得到相应的 ConsumeQueue(里面有 MapperQueue（里面有 MappedFile list）)
         ConsumeQueue cq = this.findConsumeQueue(dispatchRequest.getTopic(), dispatchRequest.getQueueId());
         cq.putMessagePositionInfoWrapper(dispatchRequest);
     }
@@ -1561,13 +1573,18 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     class CommitLogDispatcherBuildConsumeQueue implements CommitLogDispatcher {
-
+        /**
+         *  执行调度请求
+         *  非事务消息 或 事务提交消息 建立 消息位置信息 到 ConsumeQueue
+         * @param request
+         */
         @Override
         public void dispatch(DispatchRequest request) {
             final int tranType = MessageSysFlag.getTransactionValue(request.getSysFlag());
             switch (tranType) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
+                    //应该是把消息大小，在commitlog的起始位告诉 consumequeue
                     DefaultMessageStore.this.putMessagePositionInfo(request);
                     break;
                 case MessageSysFlag.TRANSACTION_PREPARED_TYPE:
@@ -1833,7 +1850,7 @@ public class DefaultMessageStore implements MessageStore {
             }
 
             ConcurrentMap<String, ConcurrentMap<Integer, ConsumeQueue>> tables = DefaultMessageStore.this.consumeQueueTable;
-
+            //MappedFile 落盘
             for (ConcurrentMap<Integer, ConsumeQueue> maps : tables.values()) {
                 for (ConsumeQueue cq : maps.values()) {
                     boolean result = false;
@@ -1916,34 +1933,38 @@ public class DefaultMessageStore implements MessageStore {
         private boolean isCommitLogAvailable() {
             return this.reputFromOffset < DefaultMessageStore.this.commitLog.getMaxOffset();
         }
-
+        // 一直在循环
         private void doReput() {
             if (this.reputFromOffset < DefaultMessageStore.this.commitLog.getMinOffset()) {
                 log.warn("The reputFromOffset={} is smaller than minPyOffset={}, this usually indicate that the dispatch behind too much and the commitlog has expired.",
                     this.reputFromOffset, DefaultMessageStore.this.commitLog.getMinOffset());
                 this.reputFromOffset = DefaultMessageStore.this.commitLog.getMinOffset();
             }
+            //当有生产者推送消息过来的时候会进入这个
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
                 if (DefaultMessageStore.this.getMessageStoreConfig().isDuplicationEnable()
                     && this.reputFromOffset >= DefaultMessageStore.this.getConfirmOffset()) {
                     break;
                 }
-
+                // 获取从reputFromOffset开始的commitLog对应的MappeFile对应的MappedByteBuffer
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
                         this.reputFromOffset = result.getStartOffset();
-
+                       // 遍历MappedByteBuffer
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
+                            // 生成重放消息重放调度请求
                             DispatchRequest dispatchRequest =
                                 DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false);
                             int size = dispatchRequest.getBufferSize() == -1 ? dispatchRequest.getMsgSize() : dispatchRequest.getBufferSize();
-
+                            // 根据请求的结果处理
                             if (dispatchRequest.isSuccess()) {
                                 if (size > 0) {
+                                    //dispatch会分别进入  CommitLogDispatcherBuildConsumeQueue 和 CommitLogDispatcherBuildIndex 的 doDispatch 方法
+                                    //请求对应的是 Message，进行调度，生成 ConsumeQueue 和 IndexFile 对应的内容。
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
-
+                                    // 当 Broker 是主节点 && Broker 开启的是长轮询，通知消费队列有新的消息。
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
@@ -1961,7 +1982,7 @@ public class DefaultMessageStore implements MessageStore {
                                             .getSinglePutMessageTopicSizeTotal(dispatchRequest.getTopic())
                                             .addAndGet(dispatchRequest.getMsgSize());
                                     }
-                                } else if (size == 0) {
+                                } else if (size == 0) {//请求对应的是 Blank，即文件尾，跳转指向下一个 MappedFile。
                                     this.reputFromOffset = DefaultMessageStore.this.commitLog.rollNextFile(this.reputFromOffset);
                                     readSize = result.getSize();
                                 }
