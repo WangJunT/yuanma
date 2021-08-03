@@ -21,17 +21,24 @@ import java.util.Map;
 public class DispatchRequest {
     private final String topic;
     private final int queueId;
+    //消息物理偏移量
     private final long commitLogOffset;
+    //消息物理偏移量
     private int msgSize;
     private final long tagsCode;
+    //消息存储时间戳
     private final long storeTimestamp;
+    //消息队列偏移量
     private final long consumeQueueOffset;
     private final String keys;
+    //是否成功解析到完整的消息
     private final boolean success;
     private final String uniqKey;
 
     private final int sysFlag;
+    //消息预处理事务偏移量
     private final long preparedTransactionOffset;
+    //消息属性
     private final Map<String, String> propertiesMap;
     private byte[] bitMap;
 

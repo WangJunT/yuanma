@@ -405,6 +405,7 @@ public class ConsumeQueue {
                         topic, queueId, request.getCommitLogOffset());
                 }
             }
+            //将消息偏移量，消息长度，tag写入到bytebuffer
             boolean result = this.putMessagePositionInfo(request.getCommitLogOffset(),
                 request.getMsgSize(), tagsCode, request.getConsumeQueueOffset());
             if (result) {
@@ -457,7 +458,7 @@ public class ConsumeQueue {
         this.byteBufferIndex.putLong(tagsCode);
         // 计算consumeQueue存储位置，并获得对应的MappedFile
         final long expectLogicOffset = cqOffset * CQ_STORE_UNIT_SIZE;
-
+        //获取消费队列内存映射 MappedFile
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
         if (mappedFile != null) {
             // 当是ConsumeQueue第一个MappedFile && 队列位置非第一个 && MappedFile未写入内容，则填充前置空白占位
@@ -492,7 +493,7 @@ public class ConsumeQueue {
             }
             // 设置commitLog重放消息到ConsumeQueue位置。
             this.maxPhysicOffset = offset + size;
-            // 插入mappedFile
+            // 追加消息到内存映射文件
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;

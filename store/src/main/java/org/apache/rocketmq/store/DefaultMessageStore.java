@@ -1958,6 +1958,7 @@ public class DefaultMessageStore implements MessageStore {
                     break;
                 }
                 // 获取从reputFromOffset开始的commitLog对应的MappeFile对应的MappedByteBuffer
+                //返回 reput开始全部有效数据
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
@@ -1977,6 +1978,7 @@ public class DefaultMessageStore implements MessageStore {
                                     // 当 Broker 是主节点 && Broker 开启的是长轮询，通知消费队列有新的消息。
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
+                                        //这里就可以通知客户端来消费消息了
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                             dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                             dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),
