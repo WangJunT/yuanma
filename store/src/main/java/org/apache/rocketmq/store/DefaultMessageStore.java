@@ -1307,9 +1307,18 @@ public class DefaultMessageStore implements MessageStore {
         log.info(fileName + (result ? " create OK" : " already exists"));
     }
 
+    //由于RocketMQ操作CommitLog、ConsumerQueue文件是基于内存映射机制并在启动的时候回加
+    //载CommitLog、ConsumerQueue目录下的所有文件，为了避免内存与磁盘的浪费，不可能将消息永
+    //久存储在消息服务器上，所以要引入一种机制来删除已过期的文件。RocketMQ顺序写CommitLog、
+    //ConsumerQueue文件，所有写操作全部落在最后一个CommitLog或者ConsumerQueue文件上，之前
+    //的文件在下一个文件创建后将不会再被更新。RocketMQ清除过期文件的方法时：如果当前文件在在一
+    //定时间间隔内没有再次被消费，则认为是过期文件，可以被删除，RocketMQ不会关注这个文件上的消
+    //息是否全部被消费。默认每个文件的过期时间为72小时，通过在Broker配置文件中设置
+    //fileReservedTime来改变过期时间，单位为小时。
     private void addScheduleTask() {
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+            //每隔10s调度一次清除文件
             @Override
             public void run() {
                 DefaultMessageStore.this.cleanFilesPeriodically();
