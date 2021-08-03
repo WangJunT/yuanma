@@ -114,6 +114,8 @@ public class MappedFileQueue {
                     file.setCommittedPosition((int) (offset % this.mappedFileSize));
                     file.setFlushedPosition((int) (offset % this.mappedFileSize));
                 } else {
+                    //offset小于文件的起始偏移量,说明该文件是有效文件后面创建的,释放
+                    //mappedFile占用内存,删除文件
                     file.destroy(1000);
                     willRemoveFiles.add(file);
                 }

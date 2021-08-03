@@ -201,6 +201,7 @@ public class DefaultMessageStore implements MessageStore {
             result = result && this.loadConsumeQueue();
 
             if (result) {
+                //加载存储监测点,监测点主要记录CommitLog文件、ConsumerQueue文件、Index索引文件的刷盘点
                 this.storeCheckpoint =
                     new StoreCheckpoint(StorePathConfigHelper.getStoreCheckpoint(this.messageStoreConfig.getStorePathRootDir()));
 
@@ -1374,7 +1375,9 @@ public class DefaultMessageStore implements MessageStore {
             }
         }
     }
-
+    //判断上一次是否异常退出。实现机制是Broker在启动时创建abort文件，在退出时通过JVM钩子函
+    //数删除abort文件。如果下次启动时存在abort文件。说明Broker时异常退出的，CommitLog与
+    //ConsumerQueue数据有可能不一致，需要进行修复。
     private boolean isTempFileExist() {
         String fileName = StorePathConfigHelper.getAbortFile(this.messageStoreConfig.getStorePathRootDir());
         File file = new File(fileName);
@@ -1418,8 +1421,13 @@ public class DefaultMessageStore implements MessageStore {
 
         return true;
     }
-
+    //由于RocketMQ存储首先将消息全量存储在CommitLog文件中，然后异步生成转发任务更新
+    //ConsumerQueue和Index文件。如果消息成功存储到CommitLog文件中，转发任务未成功执行，此时
+    //消息服务器Broker由于某个愿意宕机，导致CommitLog、ConsumerQueue、IndexFile文件数据不一
+    //致。如果不加以人工修复的话，会有一部分消息即便在CommitLog中文件中存在，但由于没有转发到
+    //ConsumerQueue，这部分消息将永远复发被消费者消费。
     private void recover(final boolean lastExitOK) {
+        //获得最大的物理偏移消费队列
         long maxPhyOffsetOfConsumeQueue = this.recoverConsumeQueue();
 
         if (lastExitOK) {
@@ -1427,7 +1435,7 @@ public class DefaultMessageStore implements MessageStore {
         } else {
             this.commitLog.recoverAbnormally(maxPhyOffsetOfConsumeQueue);
         }
-
+        //在CommitLog中保存每个消息消费队列当前的存储逻辑偏移量
         this.recoverTopicQueueTable();
     }
 
@@ -1463,7 +1471,8 @@ public class DefaultMessageStore implements MessageStore {
 
         return maxPhysicOffset;
     }
-
+    //恢复ConsumerQueue后，将在CommitLog实例中保存每个消息队列当前的存储逻辑偏移量，这
+    //也是消息中不仅存储主题、消息队列ID、还存储了消息队列的关键所在。
     public void recoverTopicQueueTable() {
         HashMap<String/* topic-queueid */, Long/* offset */> table = new HashMap<String, Long>(1024);
         long minPhyOffset = this.commitLog.getMinOffset();
