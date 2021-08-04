@@ -417,6 +417,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                     if (brokerAllowSuspend && hasSuspendFlag) {
                         //当没有拉取到消息时，通过长轮询方式继续拉取消息
                         long pollingTimeMills = suspendTimeoutMillisLong;
+                        //没有配置长连接取  shortPollingTimeMills 的值
                         if (!this.brokerController.getBrokerConfig().isLongPollingEnable()) {
                             pollingTimeMills = this.brokerController.getBrokerConfig().getShortPollingTimeMills();
                         }

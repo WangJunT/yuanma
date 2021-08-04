@@ -2027,6 +2027,9 @@ public class DefaultMessageStore implements MessageStore {
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
                                         //这里就可以通知客户端来消费消息了
+                                        //如果开启了长轮询机制，PullRequestHoldService会每隔5s被唤醒去尝试检测是否有新的消息的到
+                                        //来才给客户端响应，或者直到超时才给客户端进行响应，消息实时性比较差，为了避免这种情况，
+                                        //RocketMQ引入另外一种机制：当消息到达时唤醒挂起线程触发一次检查。
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                             dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                             dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),
