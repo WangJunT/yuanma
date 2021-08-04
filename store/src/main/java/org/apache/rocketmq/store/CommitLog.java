@@ -1339,6 +1339,14 @@ public class CommitLog {
 
                 try {
                     if (flushCommitLogTimed) {
+                        //后来看了文章，这里睡眠是很有必要的！！！！！！
+                        //https://mp.weixin.qq.com/s/ifA44PNnIalFF-lNkQYolg
+                        //当线程中有 I/O 等操作不占用CPU资源时，操作系统可以调度CPU可以同时执行更多的线程。
+//                        1. 一个极端的线程（不停执行“计算”型操作时），就可以把单个核心的利用率跑满，多核心CPU最多只能同时执行等于核心数的“极端”线程数
+//                        2. 如果每个线程都这么“极端”，且同时执行的线程数超过核心数，会导致不必要的切换，造成负载过高，只会让执行更慢
+//                        3. I/O 等暂停类操作时，CPU处于空闲状态，操作系统调度CPU执行其他线程，可以提高CPU利用率，同时执行更多的线程
+//                        4. I/O 事件的频率频率越高，或者等待/暂停时间越长，CPU的空闲时间也就更长，利用率越低，操作系统可以调度CPU执行更多的线程
+//                        牛逼！！！
                         Thread.sleep(interval);
                     } else {
 //                        System.out.println("before:" + System.currentTimeMillis());
