@@ -90,6 +90,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      *
      * This field defaults to clustering.
      */
+    //消息队列负载均衡，通常的作法是一个消息队列在同一个时间只允许被一个消费消费者消费，一个
+    //消息消费者可以同时消费多个消息队列。
     private MessageModel messageModel = MessageModel.CLUSTERING;
 
     /**
@@ -123,6 +125,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * </li>
      * </ul>
      */
+    //指定消费开始偏移量（最大偏移量、最小偏移量、启动时间戳）开始消费
     private ConsumeFromWhere consumeFromWhere = ConsumeFromWhere.CONSUME_FROM_LAST_OFFSET;
 
     /**
@@ -136,16 +139,19 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
      */
+    //集群模式下的消息队列负载策略
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
     /**
      * Subscription relationship
      */
+    //订阅信息
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
     /**
      * Message listener
      */
+    //消息业务监听器
     private MessageListener messageListener;
 
     /**
@@ -171,12 +177,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Concurrently max span offset.it has no effect on sequential consumption
      */
+    //并发消息消费时处理队列最大跨度
     private int consumeConcurrentlyMaxSpan = 2000;
 
     /**
      * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
      */
+    //每1000次流控后打印流控日志
     private int pullThresholdForQueue = 1000;
 
     /**
@@ -213,6 +221,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Message pull Interval
      */
+    //推模式下任务间隔时间
     private long pullInterval = 0;
 
     /**
@@ -223,6 +232,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Batch pull size
      */
+    //推模式下任务拉取的条数,默认32条
     private int pullBatchSize = 32;
 
     /**
@@ -252,6 +262,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Maximum amount of time in minutes a message may block the consuming thread.
      */
+    //消息消费超时时间
     private long consumeTimeout = 15;
 
     /**

@@ -57,7 +57,7 @@ public class Consumer {
         /*
          * Subscribe one more more topics to consume.
          */
-        consumer.subscribe("TopicTest", "*");
+        consumer.subscribe("TopicTestaaawqeqwe", "*");
 
         consumer.setNamesrvAddr("127.0.0.1:9876");
         /*

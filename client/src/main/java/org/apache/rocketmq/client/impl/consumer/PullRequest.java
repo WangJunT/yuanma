@@ -20,8 +20,11 @@ import org.apache.rocketmq.common.message.MessageQueue;
 
 public class PullRequest {
     private String consumerGroup;
+    //拉取消息
     private MessageQueue messageQueue;
+    //消息处理队列
     private ProcessQueue processQueue;
+    //待拉取的MessageQueue偏移量
     private long nextOffset;
     private boolean lockedFirst = false;
 
@@ -93,7 +96,9 @@ public class PullRequest {
         return "PullRequest [consumerGroup=" + consumerGroup + ", messageQueue=" + messageQueue
             + ", nextOffset=" + nextOffset + "]";
     }
-
+    //ProcessQueue是MessageQueue在消费端的重现、快照。PullMessageService从消息服务器默认
+    //每次拉取32条消息，按照消息的队列偏移量顺序存放在ProcessQueue中，PullMessageService然后将
+    //消息提交到消费者消费线程池，消息成功消费后从ProcessQueue中移除。
     public ProcessQueue getProcessQueue() {
         return processQueue;
     }
