@@ -68,6 +68,17 @@ import org.apache.rocketmq.store.stats.BrokerStatsManager;
 //RocketMQ组织文件以文件的起始偏移量来命名文件，这样根据偏移量能快速定位到真实的物理文件。
 //RocketMQ基于内存映射文件机制提供了同步刷盘和异步刷盘两种机制，异步刷盘是指在消息存储时先
 //追加到内存映射文件，然后启动专门的刷盘线程定时将内存中的文件数据刷写到磁盘。
+//  CommitLog，消息存储文件，RocketMQ为了保证消息发送的高吞吐量，采用单一文件存储所有主
+//题消息，保证消息存储是完全的顺序写，但这样给文件读取带来了不便，为此RocketMQ为了方便消息
+//消费构建了消息消费队列文件，基于主题与队列进行组织，同时RocketMQ为消息实现了Hash索引，可
+//以为消息设置索引键，根据所以能够快速从CommitLog文件中检索消息。
+//  当消息达到CommitLog后，会通过ReputMessageService线程接近实时地将消息转发给消息消费
+//队列文件与索引文件。为了安全起见，RocketMQ引入abort文件，记录Broker的停机是否是正常关闭
+//还是异常关闭，在重启Broker时为了保证CommitLog文件，消息消费队列文件与Hash索引文件的正确
+//性，分别采用不同策略来恢复文件。
+//  RocketMQ不会永久存储消息文件、消息消费队列文件，而是启动文件过期机制并在磁盘空间不足
+//或者默认凌晨4点删除过期文件，文件保存72小时并且在删除文件时并不会判断该消息文件上的消息是
+//否被消费。
 public class DefaultMessageStore implements MessageStore {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
