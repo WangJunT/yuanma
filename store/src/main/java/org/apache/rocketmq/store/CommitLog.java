@@ -134,6 +134,7 @@ public class CommitLog {
         return this.mappedFileQueue.remainHowManyDataToFlush();
     }
 
+    //执行文件销毁和删除
     public int deleteExpiredFile(
         final long expiredTime,
         final int deleteFilesInterval,

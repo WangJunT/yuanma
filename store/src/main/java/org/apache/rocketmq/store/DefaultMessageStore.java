@@ -62,7 +62,12 @@ import org.apache.rocketmq.store.index.IndexService;
 import org.apache.rocketmq.store.index.QueryOffsetResult;
 import org.apache.rocketmq.store.schedule.ScheduleMessageService;
 import org.apache.rocketmq.store.stats.BrokerStatsManager;
-
+//RocketMQ的存储文件包括消息文件（Commitlog）、消息消费队列文件（ConsumerQueue）、
+//Hash索引文件（IndexFile）、监测点文件（checkPoint）、abort（关闭异常文件）。单个消息存储文
+//件、消息消费队列文件、Hash索引文件长度固定以便使用内存映射机制进行文件的读写操作。
+//RocketMQ组织文件以文件的起始偏移量来命名文件，这样根据偏移量能快速定位到真实的物理文件。
+//RocketMQ基于内存映射文件机制提供了同步刷盘和异步刷盘两种机制，异步刷盘是指在消息存储时先
+//追加到内存映射文件，然后启动专门的刷盘线程定时将内存中的文件数据刷写到磁盘。
 public class DefaultMessageStore implements MessageStore {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
@@ -1367,7 +1372,9 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private void cleanFilesPeriodically() {
+        //清除存储文件
         this.cleanCommitLogService.run();
+        //清除消息消费队列文件
         this.cleanConsumeQueueService.run();
     }
 
@@ -1660,14 +1667,22 @@ public class DefaultMessageStore implements MessageStore {
                 DefaultMessageStore.log.warn(this.getServiceName() + " service has exception. ", e);
             }
         }
-
+        //删除文件操作的条件
+        //1. 指定删除文件的时间点，RocketMQ通过deleteWhen设置一天的固定时间执行一次删除过期
+        //文件操作，默认4点
+        //2. 磁盘空间如果不充足，删除过期文件
+        //3. 预留，手工触发
         private void deleteExpiredFiles() {
             int deleteCount = 0;
+            //文件保留的时间
             long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime();
+            //删除物理文件的间隔
             int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval();
+            //线程被占用,第一次拒绝删除后能保留的最大时间,超过该时间,文件将被强制删除
             int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
-
+            //到时间删除
             boolean timeup = this.isTimeToDelete();
+            //空间满了删除
             boolean spacefull = this.isSpaceToDelete();
             boolean manualDelete = this.manualDeleteFileSeveralTimes > 0;
 
@@ -1723,13 +1738,16 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         private boolean isSpaceToDelete() {
+            //磁盘分区的最大使用量
             double ratio = DefaultMessageStore.this.getMessageStoreConfig().getDiskMaxUsedSpaceRatio() / 100.0;
 
             cleanImmediately = false;
 
             {
                 String storePathPhysic = DefaultMessageStore.this.getMessageStoreConfig().getStorePathCommitLog();
+                //当前CommitLog目录所在的磁盘分区的磁盘使用率
                 double physicRatio = UtilAll.getDiskPartitionSpaceUsedPercent(storePathPhysic);
+                //diskSpaceWarningLevelRatio:磁盘使用率警告阈值,默认0.90
                 if (physicRatio > diskSpaceWarningLevelRatio) {
                     boolean diskok = DefaultMessageStore.this.runningFlags.getAndMakeDiskFull();
                     if (diskok) {
